@@ -1,5 +1,4 @@
 import { server } from './app';
-
 import { Badges } from './utils';
 
 const PORT = 3333;
