@@ -1,4 +1,5 @@
 import express from 'express';
+import { resolve } from 'path';
 
 import { Badges } from './utils';
 
@@ -18,6 +19,10 @@ class App {
     console.log(`\n${Badges.INFO}Starting middlewares`);
 
     this.server.use(express.json());
+    this.server.use(
+      '/files',
+      express.static(resolve(__dirname, '..', 'tmp', 'uploads'))
+    );
   }
 
   // Register Routes
