@@ -1,6 +1,8 @@
 import * as Yup from 'yup';
-import { isBefore, format, parseISO, startOfHour } from 'date-fns';
+import { isBefore, format, parseISO, startOfHour, subHours } from 'date-fns';
 import BR from 'date-fns/locale/pt-BR';
+
+import Mail from '../../lib/Mail';
 
 import { Appointment } from '../models/Appointment';
 import { File } from '../models/File';
@@ -62,6 +64,13 @@ class AppointmentController {
         .json({ error: 'You can only create appointments with providers' });
     }
 
+    // Check if you're trying to schedule with you
+    if (userId === provider_id) {
+      return res
+        .status(401)
+        .json({ error: `You can't create an appointment with youself` });
+    }
+
     // Check for past dates
     const hourStart = startOfHour(parseISO(date));
 
@@ -100,6 +109,58 @@ class AppointmentController {
     await Notification.create({
       content: `Novo agendamento: ${user.name} - ${formattedDate}`,
       user: provider_id
+    });
+
+    return res.json(appointment);
+  }
+
+  async delete(req, res) {
+    const appointment = await Appointment.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: 'provider',
+          attributes: ['name', 'email']
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['name']
+        }
+      ]
+    });
+
+    if (appointment.user_id !== req.userId) {
+      return res.status(401).json({
+        error: `You don't have permission to cancel this appointment`
+      });
+    }
+
+    // Subtract 2 hours from appointment date
+    const subDate = subHours(appointment.date, 2);
+
+    //
+    if (isBefore(subDate, new Date())) {
+      return res.status(401).json({
+        error: 'You can only cancel appointments 2 hours in advance'
+      });
+    }
+
+    appointment.canceled_at = new Date();
+
+    await appointment.save();
+
+    await Mail.sendMail({
+      to: `${appointment.provider.name} <${appointment.provider.email}>`,
+      subject: 'Appointment Cancel',
+      template: 'cancellation',
+      context: {
+        provider: appointment.provider.name,
+        user: appointment.user.name,
+        date: format(appointment.date, "dd 'de' MMMM, H:mm'h'", {
+          locale: BR
+        })
+      }
     });
 
     return res.json(appointment);

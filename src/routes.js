@@ -26,6 +26,7 @@ routes.use(authMiddleware);
 // Appointment
 routes.get('/appointments', AppointmentController.index);
 routes.post('/appointments', AppointmentController.store);
+routes.delete('/appointments/:id', AppointmentController.delete);
 
 // Files
 routes.post('/files', upload.single('file'), FileController.store);
