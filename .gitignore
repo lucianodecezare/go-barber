@@ -2,3 +2,4 @@ node_modules
 .vscode
 tmp/uploads/*
 src/config/mail.js
+src/config/sentry.js
